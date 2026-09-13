@@ -85,6 +85,13 @@
       cursor: pointer;
     }
 
+    /* Kavita's own .btn-icon:disabled only clears the background and border;
+       the fade comes from Bootstrap's .btn:disabled underneath it. */
+    .overlay .btn-icon:disabled {
+      opacity: .65;
+      pointer-events: none;
+    }
+
     .overlay .track {
       flex: 1;
       height: 4px;
@@ -183,7 +190,7 @@
     <button type="button" data-action="settings" aria-pressed="false">Settings pane (X)</button>
     <button type="button" data-action="webtoon" aria-pressed="true">Webtoon mode (W)</button>
     <button type="button" data-action="toast">Kavita toast (T)</button>
-    <p>Scrollito should clear both, and lift again when the settings pane opens. Toasts should draw over it. Leaving Webtoon mode should take its menu button with it.</p>
+    <p>Scrollito should clear both, and lift again when the settings pane opens. Toasts should draw over it. Leaving Webtoon mode should leave its menu button in place, disabled, without moving any icon.</p>
   </div>
 
   <script src="/scrollito.user.js"></script>

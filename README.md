@@ -175,8 +175,9 @@ container after editing `.env`.
   **play button only**, then full again. Hidden stops scrolling and leaves
   nothing over the page. Play button only keeps scrolling with just the
   play/pause button on screen. The icon is lit whenever the control is showing
-  and stays in the menu either way, so Kavita's own icons never shift. The eye
-  icon in settings hides the control directly. Scrollito remembers whether you
+  and stays in the menu either way, so Kavita's own icons never shift. Outside
+  Webtoon mode it stays in place too, faded and disabled. The eye icon in
+  settings hides the control directly. Scrollito remembers whether you
   last used the full control or play button only; after a reload, a hidden
   control comes back. On a Kavita whose menu layout is not recognized, there is
   no play-button-only size, and a small tab stays in the corner while hidden.

@@ -517,17 +517,11 @@
     return rows.reverse().find((row) => row.querySelector(':scope > .col > button')) ?? null;
   }
 
-  // The slot stays through every press rather than coming and going with the
-  // control: a column that did would shift Kavita's own icons each time. It
-  // only leaves with Webtoon mode, where the paged readers have no control for
-  // it to show, and a mode switch is a deliberate change rather than a press.
+  // The slot is permanent, in every reading mode: a column that came and went
+  // would shift Kavita's own icons, and the reading-mode button beside it is
+  // tapped over and over to step between modes, so a slot that left with
+  // Webtoon mode slid that button out from under the finger.
   function syncMenuToggleButton() {
-    if (!isWebtoonModeActive()) {
-      menuToggleSlot?.remove();
-      menuToggleSlot = null;
-      return;
-    }
-
     const [bottomOverlay] = findReaderOverlays().bottom;
     const row = bottomOverlay ? findReaderMenuIconRow(bottomOverlay) : null;
 
@@ -573,6 +567,19 @@
     const button = menuToggleSlot?.firstElementChild;
     if (!button) return;
 
+    // The paged readers have no control to show, so the button stays put but
+    // disabled there: the same faded look Kavita gives its own
+    // reading-direction button in Webtoon mode, meaning the same thing.
+    const webtoon = isWebtoonModeActive();
+    button.disabled = !webtoon;
+    if (!webtoon) {
+      const label = 'Auto-scroll is only available in Webtoon mode';
+      button.setAttribute('aria-label', label);
+      button.title = label;
+      button.firstElementChild.style.fill = 'currentColor';
+      return;
+    }
+
     // A three-way cycle has no pressed state to report, so the label names what
     // the next press does instead.
     const action = DISPLAY_ACTIONS[displayMode];
@@ -580,9 +587,8 @@
     button.title = `${action} (${shortcutLabel(SHORTCUTS.hide)})`;
     // Lit in the reader's own accent while any of the control is up, plain when
     // it is not. The pill just above the menu shows which size it is, so the
-    // icon never has to. Dimming would be the obvious cue for off, but Kavita
-    // disables its reading-direction button in Webtoon mode, so a faded icon
-    // already sits next to this one meaning something else entirely.
+    // icon never has to. Off stays plain rather than faded, since faded is what
+    // the paged modes use to say the button is unavailable.
     button.firstElementChild.style.fill =
       displayMode === 'off' ? 'currentColor' : 'var(--primary-color, #0a84ff)';
   }
