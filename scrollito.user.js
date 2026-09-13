@@ -517,9 +517,17 @@
     return rows.reverse().find((row) => row.querySelector(':scope > .col > button')) ?? null;
   }
 
-  // The slot is permanent rather than added only while hidden: a column that
-  // came and went would shift Kavita's own icons on every toggle.
+  // The slot stays through every press rather than coming and going with the
+  // control: a column that did would shift Kavita's own icons each time. It
+  // only leaves with Webtoon mode, where the paged readers have no control for
+  // it to show, and a mode switch is a deliberate change rather than a press.
   function syncMenuToggleButton() {
+    if (!isWebtoonModeActive()) {
+      menuToggleSlot?.remove();
+      menuToggleSlot = null;
+      return;
+    }
+
     const [bottomOverlay] = findReaderOverlays().bottom;
     const row = bottomOverlay ? findReaderMenuIconRow(bottomOverlay) : null;
 
@@ -1232,6 +1240,10 @@
     // so read it before overwriting rather than shadowing it in a variable.
     const wasActive = !controls.hidden;
     controls.hidden = !active;
+    // Kavita's reading-mode setting sits inside its open menu, so the mode can
+    // change under a menu that stays put, and no overlay comes or goes to
+    // prompt a sync.
+    if (active !== wasActive) syncMenuToggleButton();
 
     if (!active) {
       if (running) setRunning(false);
@@ -1362,6 +1374,10 @@
       return;
     }
     if (isEditableTarget(event.target)) return;
+    // The paged readers show no control, so a shortcut there would change a
+    // setting nobody can see, and preventDefault would take the key away from
+    // whatever Kavita binds it to in those modes.
+    if (!isWebtoonModeActive()) return;
     revealControls();
     if (!positionMenu.hidden && document.activeElement?.classList.contains('position-option') &&
         ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {

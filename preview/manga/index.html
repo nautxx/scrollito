@@ -181,18 +181,22 @@
   <div class="harness">
     <button type="button" data-action="menu" aria-pressed="false">Reader menu (M)</button>
     <button type="button" data-action="settings" aria-pressed="false">Settings pane (X)</button>
+    <button type="button" data-action="webtoon" aria-pressed="true">Webtoon mode (W)</button>
     <button type="button" data-action="toast">Kavita toast (T)</button>
-    <p>Scrollito should clear both, and lift again when the settings pane opens. Toasts should draw over it.</p>
+    <p>Scrollito should clear both, and lift again when the settings pane opens. Toasts should draw over it. Leaving Webtoon mode should take its menu button with it.</p>
   </div>
 
   <script src="/scrollito.user.js"></script>
   <script>
     (() => {
       const reader = document.querySelector('.reader');
+      const webtoonImages = document.querySelector('.webtoon-images');
+      const scroller = document.querySelector('app-infinite-scroller');
       const buttons = document.querySelectorAll('.harness button');
       const toggles = document.querySelectorAll('.harness button[aria-pressed]');
       let menuOpen = false;
       let settingsOpen = false;
+      let webtoon = true;
       let toastCount = 0;
 
       // Created on first use and then kept, the way ngx-toastr does, so
@@ -243,15 +247,28 @@
         reader.append(top, bottom);
       }
 
-      function sync() {
-        renderMenu();
+      function syncPressed() {
+        const pressed = { menu: menuOpen, settings: settingsOpen, webtoon };
         toggles.forEach((button) => {
-          const pressed = button.dataset.action === 'menu' ? menuOpen : settingsOpen;
-          button.setAttribute('aria-pressed', String(pressed));
+          button.setAttribute('aria-pressed', String(pressed[button.dataset.action]));
         });
       }
 
+      function sync() {
+        renderMenu();
+        syncPressed();
+      }
+
       function toggle(action) {
+        if (action === 'webtoon') {
+          // Kavita swaps the scroller out under a menu that stays open, so leave
+          // the overlays alone: redrawing them would hide a missed sync.
+          webtoon = !webtoon;
+          if (webtoon) webtoonImages.append(scroller);
+          else scroller.remove();
+          syncPressed();
+          return;
+        }
         if (action === 'menu') {
           menuOpen = !menuOpen;
           if (!menuOpen) settingsOpen = false;
@@ -277,6 +294,7 @@
         const key = event.key.toLowerCase();
         if (key === 'm') toggle('menu');
         else if (key === 'x') toggle('settings');
+        else if (key === 'w') toggle('webtoon');
         else if (key === 't') showToast();
       });
 
