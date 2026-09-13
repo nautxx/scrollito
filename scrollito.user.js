@@ -26,6 +26,7 @@
   const AUTO_START_STORAGE_KEY = 'scrollito.auto-start';
   const SLIP_STORAGE_KEY = 'scrollito.slip';
   const SHORTCUTS_STORAGE_KEY = 'scrollito.shortcuts';
+  const DISPLAY_MODE_STORAGE_KEY = 'scrollito.display';
   const DEFAULT_SPEED = 100;
   const MIN_SPEED = 25;
   const MAX_SPEED = 600;
@@ -41,6 +42,15 @@
   const READER_ROUTE = /\/manga(?:\/|$)/i;
   const CONTROL_ID = 'scrollito';
   const POSITIONS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+  // Each press of Kavita's menu button, or the hide shortcut, steps one along.
+  // Full to off stays a single press, the way the button worked as a toggle.
+  const DISPLAY_CYCLE = { off: 'mini', mini: 'full', full: 'off' };
+  // What that next press does, for the button's label.
+  const DISPLAY_ACTIONS = {
+    off: 'Show auto-scroll play button',
+    mini: 'Show all auto-scroll controls',
+    full: 'Hide auto-scroll controls',
+  };
   const SHORTCUT_ACTIONS = ['toggle', 'slower', 'faster', 'hide'];
   const SHORTCUT_LABELS = { toggle: 'Toggle', slower: 'Slower', faster: 'Faster', hide: 'Hide' };
   const SHORTCUT_DEFAULTS = { toggle: 's', slower: '[', faster: ']', hide: 'a' };
@@ -82,7 +92,9 @@
   let autoStart = readStoredFlag(AUTO_START_STORAGE_KEY, AUTO_START_DEFAULT);
   let slipMode = readStoredFlag(SLIP_STORAGE_KEY, SLIP_DEFAULT);
   let gestureActive = false;
-  let controlsHidden = false;
+  // Only the visible modes are remembered: a reload that restored off would
+  // leave nothing on screen to show the script is there at all.
+  let displayMode = readStored(DISPLAY_MODE_STORAGE_KEY) === 'mini' ? 'mini' : 'full';
   let controlsAutoHidden = false;
   let animationFrame = 0;
   let autoHideTimer = 0;
@@ -429,12 +441,21 @@
     scheduleAutoHide();
   }
 
-  function setControlsHidden(nextHidden) {
-    controlsHidden = Boolean(nextHidden);
-    controls.dataset.userHidden = String(controlsHidden);
+  // Without a slot in Kavita's menu, nothing on screen could expand a
+  // play-only pill again, so that layout only switches between the other two.
+  function nextDisplayMode() {
+    if (readerMenuLayoutUnsupported) return displayMode === 'off' ? 'full' : 'off';
+    return DISPLAY_CYCLE[displayMode];
+  }
+
+  function setDisplayMode(nextMode) {
+    displayMode = nextMode;
+    controls.dataset.display = displayMode;
+    if (displayMode !== 'off') writeStored(DISPLAY_MODE_STORAGE_KEY, displayMode);
     syncMenuToggleButton();
-    if (controlsHidden) {
-      closeMenus();
+    // Neither smaller mode shows the settings button a menu hangs from.
+    if (displayMode !== 'full') closeMenus();
+    if (displayMode === 'off') {
       if (running) setRunning(false);
       // The control is about to be display:none, so focus has to move off it or
       // the browser drops it to <body> and the tab order restarts. Hand it to
@@ -445,6 +466,12 @@
         : revealButton;
       menuToggle?.focus({ preventScroll: true });
     } else {
+      // Play-only keeps scrolling, which is the point of it, but everything
+      // except the toggle goes display:none, so pull focus onto the one button
+      // left rather than letting it drop to <body>.
+      if (displayMode === 'mini' && controls.contains(document.activeElement)) {
+        toggleButton.focus({ preventScroll: true });
+      }
       revealControls();
     }
   }
@@ -517,7 +544,7 @@
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'btn btn-icon';
-      button.addEventListener('click', () => setControlsHidden(!controlsHidden));
+      button.addEventListener('click', () => setDisplayMode(nextDisplayMode()));
       // Sized the way Font Awesome matches its own inline SVGs to its glyphs,
       // in em so it tracks whatever font size the reader uses. Set once here:
       // none of it depends on state, only the fill below does.
@@ -538,16 +565,18 @@
     const button = menuToggleSlot?.firstElementChild;
     if (!button) return;
 
-    const action = controlsHidden ? 'Show' : 'Hide';
-    button.setAttribute('aria-label', `${action} auto-scroll controls`);
-    button.setAttribute('aria-pressed', String(controlsHidden));
-    button.title = `${action} auto-scroll controls (${shortcutLabel(SHORTCUTS.hide)})`;
-    // Lit in the reader's own accent while the control is up, plain when it is
-    // not. Dimming would be the obvious cue, but Kavita disables its
-    // reading-direction button in Webtoon mode, so a faded icon already sits
-    // next to this one meaning something else entirely.
+    // A three-way cycle has no pressed state to report, so the label names what
+    // the next press does instead.
+    const action = DISPLAY_ACTIONS[displayMode];
+    button.setAttribute('aria-label', action);
+    button.title = `${action} (${shortcutLabel(SHORTCUTS.hide)})`;
+    // Lit in the reader's own accent while any of the control is up, plain when
+    // it is not. The pill just above the menu shows which size it is, so the
+    // icon never has to. Dimming would be the obvious cue for off, but Kavita
+    // disables its reading-direction button in Webtoon mode, so a faded icon
+    // already sits next to this one meaning something else entirely.
     button.firstElementChild.style.fill =
-      controlsHidden ? 'currentColor' : 'var(--primary-color, #0a84ff)';
+      displayMode === 'off' ? 'currentColor' : 'var(--primary-color, #0a84ff)';
   }
 
   // Re-running these writes every frame invalidates style on an element that
@@ -1015,16 +1044,22 @@
       #${CONTROL_ID} .reveal-button { display: none; }
       /* Kavita's menu is holding the reveal button, so leave the page clean.
          Without that slot the tab below stays, so hiding is never a dead end. */
-      #${CONTROL_ID}[data-user-hidden="true"][data-reveal-in-menu="true"] { display: none; }
-      #${CONTROL_ID}[data-user-hidden="true"] {
+      #${CONTROL_ID}[data-display="off"][data-reveal-in-menu="true"] { display: none; }
+      #${CONTROL_ID}[data-display="off"],
+      #${CONTROL_ID}[data-display="mini"][data-reveal-in-menu="true"] {
         padding: 7px;
         gap: 0;
       }
-      #${CONTROL_ID}[data-user-hidden="true"] > *:not(.reveal-button) {
+      #${CONTROL_ID}[data-display="off"] > *:not(.reveal-button) {
         display: none;
       }
-      #${CONTROL_ID}[data-user-hidden="true"] > .reveal-button {
+      #${CONTROL_ID}[data-display="off"] > .reveal-button {
         display: grid;
+      }
+      /* Play-only needs Kavita's menu button to grow back, so where that slot
+         is missing, a remembered play-only mode shows the full pill instead. */
+      #${CONTROL_ID}[data-display="mini"][data-reveal-in-menu="true"] > *:not(.toggle-button) {
+        display: none;
       }
       #${CONTROL_ID} .shortcut-row {
         display: flex;
@@ -1090,6 +1125,7 @@
     controls.id = CONTROL_ID;
     controls.setAttribute('aria-label', 'Webtoon auto-scroll controls');
     controls.hidden = true;
+    controls.dataset.display = displayMode;
     controls.innerHTML = `
       <button class="reveal-button" type="button" aria-label="Show auto-scroll controls" title="Show auto-scroll controls">${ICONS.eyeOff}</button>
       <button class="toggle-button" type="button" aria-pressed="false" aria-label="Start auto-scroll" title="Start auto-scroll (${shortcutLabel(SHORTCUTS.toggle)})">${ICONS.play}</button>
@@ -1167,8 +1203,9 @@
     positionButton.addEventListener('click', () => setPositionMenu(positionMenu.hidden));
     autoStartToggle.addEventListener('click', () => setAutoStart(!autoStart));
     slipToggle.addEventListener('click', () => setSlipMode(!slipMode));
-    hideToggle.addEventListener('click', () => setControlsHidden(true));
-    revealButton.addEventListener('click', () => setControlsHidden(false));
+    hideToggle.addEventListener('click', () => setDisplayMode('off'));
+    // The tab only shows where play-only is skipped, so it always opens full.
+    revealButton.addEventListener('click', () => setDisplayMode('full'));
     positionOptions.forEach((option) => {
       option.addEventListener('click', () => {
         setPosition(option.dataset.value);
@@ -1346,7 +1383,7 @@
       setSpeed(speed + SPEED_STEP);
     } else if (isShortcut(event, SHORTCUTS.hide)) {
       event.preventDefault();
-      setControlsHidden(!controlsHidden);
+      setDisplayMode(nextDisplayMode());
     }
   });
 

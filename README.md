@@ -23,8 +23,8 @@ Docker injector can place the same script into Kavita's HTML at the server.
 - Can be placed in any screen corner and remembers the selection
 - Keyboard shortcuts can be remapped from the settings menu and are
   remembered per browser
-- A hide button — in Scrollito's settings, in Kavita's own reader menu, or a
-  keyboard shortcut — stops scrolling when you want to scroll manually and
+- A button in Kavita's own reader menu cycles the control between hidden, a
+  play button on its own, and the full control; hiding stops scrolling and
   leaves nothing over the page
 - Moves out of the way when Kavita's reader menu opens
 - Lets Kavita's notification popups draw over the control, so they stay
@@ -170,13 +170,16 @@ container after editing `.env`.
   controls to any corner or enable **Auto-start in Webtoon mode**.
 - Press `S` to toggle scrolling on a hardware keyboard.
 - Press `[` or `]` to decrease or increase speed.
-- Select the eye icon in settings or at the left of Kavita's reader menu, or
-  press `A`, to hide the control and stop scrolling, such as when you want to
-  scroll manually. Nothing is left over the page — select the eye in Kavita's
-  menu again, or press `A`, to bring the control back. That icon stays in the
-  menu whether the control is showing or hidden, so Kavita's own icons never
-  shift. On a Kavita whose menu layout is not recognized, a small tab stays in
-  the corner instead.
+- Select the Scrollito icon at the left of Kavita's reader menu, or press `A`,
+  to step the control through three sizes: **full**, then **hidden**, then
+  **play button only**, then full again. Hidden stops scrolling and leaves
+  nothing over the page. Play button only keeps scrolling with just the
+  play/pause button on screen. The icon is lit whenever the control is showing
+  and stays in the menu either way, so Kavita's own icons never shift. The eye
+  icon in settings hides the control directly. Scrollito remembers whether you
+  last used the full control or play button only; after a reload, a hidden
+  control comes back. On a Kavita whose menu layout is not recognized, there is
+  no play-button-only size, and a small tab stays in the corner while hidden.
 - In settings, select the keyboard icon to remap shortcuts. Select a key
   (`S`, `[`, `]`, or `A`) and press any key to reassign it, or `Escape` to
   cancel. Remapped shortcuts are remembered in that browser and take
@@ -205,7 +208,7 @@ matched pages.
 
 The script does not read credentials, call Kavita APIs, send data, or load
 remote code. Its only stored values are the scrolling speed, preferred control
-corner, auto-start and slip-mode preferences, and any remapped keyboard
+corner and size, auto-start and slip-mode preferences, and any remapped keyboard
 shortcuts, all in that site's local browser storage. Review the complete
 source in [`scrollito.user.js`](./scrollito.user.js).
 
